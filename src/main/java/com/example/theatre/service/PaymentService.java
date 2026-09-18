@@ -1,0 +1,90 @@
+package com.example.theatre.service;
+
+import com.example.theatre.dto.PaymentRequest;
+import com.example.theatre.dto.PaymentResponse;
+import com.example.theatre.entity.Booking;
+import com.example.theatre.entity.BookingStatus;
+import com.example.theatre.entity.Payment;
+import com.example.theatre.entity.PaymentMethod;
+import com.example.theatre.entity.PaymentStatus;
+import com.example.theatre.exception.BusinessRuleException;
+import com.example.theatre.exception.InvalidRequestException;
+import com.example.theatre.exception.ResourceNotFoundException;
+import com.example.theatre.repository.BookingRepository;
+import com.example.theatre.repository.PaymentRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.UUID;
+
+@Service
+@Transactional(readOnly = true)
+public class PaymentService {
+    private final PaymentRepository payments;
+    private final BookingRepository bookings;
+
+    public PaymentService(PaymentRepository payments, BookingRepository bookings) {
+        this.payments = payments;
+        this.bookings = bookings;
+    }
+
+    @Transactional
+    public PaymentResponse create(Long userId, PaymentRequest request) {
+        if (request.method() != PaymentMethod.CASH) {
+            throw new InvalidRequestException("Only CASH payments are supported for now");
+        }
+        // Lock the booking so concurrent requests cannot create two payments for it.
+        Booking booking = bookings.findByIdForPayment(request.bookingId())
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", request.bookingId()));
+        if (!booking.getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Booking", request.bookingId());
+        }
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new BusinessRuleException("Cannot start payment for a cancelled booking");
+        }
+        if (payments.findByBookingId(booking.getId()).isPresent()) {
+            throw new BusinessRuleException("A payment already exists for this booking");
+        }
+
+        Payment payment = new Payment();
+        payment.setBooking(booking);
+        payment.setAmount(booking.getTotalAmount());
+        payment.setMethod(request.method());
+        return toResponse(payments.save(payment));
+    }
+
+    @Transactional
+    public PaymentResponse confirmCash(Long paymentId) {
+        // Cancellation also locks the booking first, so the two operations cannot race.
+        bookings.findByPaymentIdForConfirmation(paymentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
+        Payment payment = payments.findByIdForConfirmation(paymentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
+        if (payment.getMethod() != PaymentMethod.CASH) {
+            throw new BusinessRuleException("Only cash payments can be confirmed here");
+        }
+        if (payment.getStatus() != PaymentStatus.PENDING) {
+            throw new BusinessRuleException("Payment is not pending");
+        }
+        if (payment.getBooking().getStatus() != BookingStatus.CONFIRMED) {
+            throw new BusinessRuleException("Cannot confirm payment for a cancelled booking");
+        }
+        payment.setStatus(PaymentStatus.COMPLETED);
+        payment.setTransactionReference("CASH-" + UUID.randomUUID());
+        return toResponse(payment);
+    }
+
+    public PaymentResponse getById(Long userId, Long paymentId) {
+        Payment payment = payments.findById(paymentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
+        if (!payment.getBooking().getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Payment", paymentId);
+        }
+        return toResponse(payment);
+    }
+
+    private PaymentResponse toResponse(Payment payment) {
+        return new PaymentResponse(payment.getId(), payment.getBooking().getId(), payment.getAmount(),
+                payment.getStatus(), payment.getMethod(), payment.getTransactionReference(),
+                payment.getCreatedAt());
+    }
+}
