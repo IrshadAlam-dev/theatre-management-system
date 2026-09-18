@@ -112,14 +112,30 @@ class SecurityIT {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void onlyAdminsCanInspectAnotherUsersPayment() throws Exception {
+        mvc.perform(get("/api/payments/admin/999999"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/payments/admin/999999")
+                        .header("Authorization", "Bearer " + token("CUSTOMER")))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/payments/admin/999999")
+                        .header("Authorization", "Bearer " + adminToken()))
+                .andExpect(status().isNotFound());
+    }
+
     private String adminToken() {
+        return token("ADMIN");
+    }
+
+    private String token(String role) {
         Instant now = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer("theatre-management-system")
                 .subject("1")
                 .issuedAt(now)
                 .expiresAt(now.plusSeconds(300))
-                .claim("roles", List.of("ADMIN"))
+                .claim("roles", List.of(role))
                 .build();
         return encoder.encode(JwtEncoderParameters.from(
                 JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();

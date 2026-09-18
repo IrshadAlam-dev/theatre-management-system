@@ -26,8 +26,8 @@ returns 404.
 The admin confirmation changes PENDING to COMPLETED and generates a cash receipt
 reference. It does not collect or verify money automatically. Do not call the
 confirmation endpoint until the cash has actually been received. A second
-confirmation is rejected. This simple demo workflow has no staff audit trail;
-add one before using it for real business transactions.
+confirmation is rejected. Phase 14 adds the confirming admin ID and time for
+new confirmations; see `phase-14-cash-audit.md`.
 
 After code changes, restart the app from the project folder:
 

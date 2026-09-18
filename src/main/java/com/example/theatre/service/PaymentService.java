@@ -7,13 +7,16 @@ import com.example.theatre.entity.BookingStatus;
 import com.example.theatre.entity.Payment;
 import com.example.theatre.entity.PaymentMethod;
 import com.example.theatre.entity.PaymentStatus;
+import com.example.theatre.entity.User;
 import com.example.theatre.exception.BusinessRuleException;
 import com.example.theatre.exception.InvalidRequestException;
 import com.example.theatre.exception.ResourceNotFoundException;
 import com.example.theatre.repository.BookingRepository;
 import com.example.theatre.repository.PaymentRepository;
+import com.example.theatre.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -21,10 +24,12 @@ import java.util.UUID;
 public class PaymentService {
     private final PaymentRepository payments;
     private final BookingRepository bookings;
+    private final UserRepository users;
 
-    public PaymentService(PaymentRepository payments, BookingRepository bookings) {
+    public PaymentService(PaymentRepository payments, BookingRepository bookings, UserRepository users) {
         this.payments = payments;
         this.bookings = bookings;
+        this.users = users;
     }
 
     @Transactional
@@ -53,7 +58,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentResponse confirmCash(Long paymentId) {
+    public PaymentResponse confirmCash(Long paymentId, Long adminId) {
         // Cancellation also locks the booking first, so the two operations cannot race.
         bookings.findByPaymentIdForConfirmation(paymentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
@@ -68,8 +73,18 @@ public class PaymentService {
         if (payment.getBooking().getStatus() != BookingStatus.CONFIRMED) {
             throw new BusinessRuleException("Cannot confirm payment for a cancelled booking");
         }
+        User admin = users.findById(adminId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", adminId));
         payment.setStatus(PaymentStatus.COMPLETED);
         payment.setTransactionReference("CASH-" + UUID.randomUUID());
+        payment.setConfirmedBy(admin);
+        payment.setConfirmedAt(LocalDateTime.now());
+        return toResponse(payment);
+    }
+
+    public PaymentResponse getForAdmin(Long paymentId) {
+        Payment payment = payments.findById(paymentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
         return toResponse(payment);
     }
 
@@ -85,6 +100,7 @@ public class PaymentService {
     private PaymentResponse toResponse(Payment payment) {
         return new PaymentResponse(payment.getId(), payment.getBooking().getId(), payment.getAmount(),
                 payment.getStatus(), payment.getMethod(), payment.getTransactionReference(),
-                payment.getCreatedAt());
+                payment.getCreatedAt(), payment.getConfirmedBy() == null ? null : payment.getConfirmedBy().getId(),
+                payment.getConfirmedAt());
     }
 }

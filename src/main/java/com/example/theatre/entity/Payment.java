@@ -33,6 +33,13 @@ public class Payment {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "confirmed_by_user_id")
+    private User confirmedBy;
+
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
+
     public Payment() {
     }
 
@@ -86,5 +93,21 @@ public class Payment {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public User getConfirmedBy() {
+        return confirmedBy;
+    }
+
+    public void setConfirmedBy(User confirmedBy) {
+        this.confirmedBy = confirmedBy;
+    }
+
+    public LocalDateTime getConfirmedAt() {
+        return confirmedAt;
+    }
+
+    public void setConfirmedAt(LocalDateTime confirmedAt) {
+        this.confirmedAt = confirmedAt;
     }
 }

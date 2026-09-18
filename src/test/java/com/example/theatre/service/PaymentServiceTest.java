@@ -11,6 +11,7 @@ import com.example.theatre.exception.BusinessRuleException;
 import com.example.theatre.exception.ResourceNotFoundException;
 import com.example.theatre.repository.BookingRepository;
 import com.example.theatre.repository.PaymentRepository;
+import com.example.theatre.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,11 +31,12 @@ import static org.mockito.Mockito.when;
 class PaymentServiceTest {
     @Mock private PaymentRepository payments;
     @Mock private BookingRepository bookings;
+    @Mock private UserRepository users;
     private PaymentService service;
 
     @BeforeEach
     void setUp() {
-        service = new PaymentService(payments, bookings);
+        service = new PaymentService(payments, bookings, users);
     }
 
     @Test
@@ -96,11 +98,16 @@ class PaymentServiceTest {
         ReflectionTestUtils.setField(payment, "id", 5L);
         when(bookings.findByPaymentIdForConfirmation(5L)).thenReturn(Optional.of(payment.getBooking()));
         when(payments.findByIdForConfirmation(5L)).thenReturn(Optional.of(payment));
+        User admin = new User();
+        ReflectionTestUtils.setField(admin, "id", 7L);
+        when(users.findById(7L)).thenReturn(Optional.of(admin));
 
-        var result = service.confirmCash(5L);
+        var result = service.confirmCash(5L, 7L);
 
         assertThat(result.status()).isEqualTo(PaymentStatus.COMPLETED);
         assertThat(result.transactionReference()).startsWith("CASH-");
+        assertThat(result.confirmedByUserId()).isEqualTo(7L);
+        assertThat(result.confirmedAt()).isNotNull();
     }
 
     @Test
@@ -112,7 +119,7 @@ class PaymentServiceTest {
         when(bookings.findByPaymentIdForConfirmation(5L)).thenReturn(Optional.of(payment.getBooking()));
         when(payments.findByIdForConfirmation(5L)).thenReturn(Optional.of(payment));
 
-        assertThatThrownBy(() -> service.confirmCash(5L))
+        assertThatThrownBy(() -> service.confirmCash(5L, 7L))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessage("Payment is not pending");
     }

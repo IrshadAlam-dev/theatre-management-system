@@ -46,7 +46,7 @@
       <div class="page-intro"><p class="eyebrow">STAFF SPACE</p><h1>Admin desk</h1><p>Set up the catalogue and confirm cash only after you have received it.</p></div>
       <div class="admin-layout">
         <section class="panel"><h2>Confirm cash</h2><p class="muted">Use the payment ID given to you by the customer. This action cannot be repeated.</p>
-          <form id="confirm-form" class="inline-form"><label>Payment ID<input name="paymentId" type="number" min="1" required></label><button class="button button-primary">Confirm received</button></form>
+          <form id="confirm-form" class="inline-form"><label>Payment ID<input name="paymentId" type="number" min="1" required></label><button id="lookup-payment" class="button button-outline" type="button">Look up</button><button class="button button-primary" type="submit">Confirm received</button></form>
         </section>
         <section class="panel"><h2>Catalogue IDs</h2><p class="muted">Use these IDs when creating related records.</p><div id="admin-ids" class="id-lists">Loading…</div></section>
       </div>

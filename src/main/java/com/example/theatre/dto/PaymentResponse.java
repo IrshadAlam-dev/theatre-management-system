@@ -12,6 +12,8 @@ public record PaymentResponse(
         PaymentStatus status,
         PaymentMethod method,
         String transactionReference,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        Long confirmedByUserId,
+        LocalDateTime confirmedAt
 ) {
 }

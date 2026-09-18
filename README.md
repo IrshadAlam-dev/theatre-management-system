@@ -50,7 +50,7 @@ Leave the terminal running while using the app. Press `Ctrl+C` to stop Spring Bo
 1. Sign in as an admin. Add a theatre, then a screen, movie, future show, and seat. The admin page displays IDs to use in the related forms.
 2. Sign out and register a customer. Open a show, choose an available seat, and reserve it.
 3. Open **My bookings** and record a CASH payment. It starts as **PENDING**—no money moves through this application.
-4. After receiving the cash (or when explicitly simulating this in a local demo), sign in as admin and confirm the payment using its ID. Its status becomes **COMPLETED**.
+4. After receiving the cash (or when explicitly simulating this in a local demo), sign in as admin. Enter the payment ID, use **Look up** to check it, then confirm. Its status becomes **COMPLETED**, with the confirming admin ID and time recorded.
 5. To test cancellation, make a *different unpaid booking*. Cancel it before the show begins; its seat becomes available again. A completed cash booking cannot be cancelled without a separate refund process.
 
 The browser keeps the login token in memory only. Refreshing the page signs you out.
@@ -84,6 +84,7 @@ The usual request path is **browser → controller → service → repository �
 | Bookings | `POST /api/bookings`, `GET /api/bookings`, `GET /api/bookings/{id}`, `POST /api/bookings/{id}/cancel` | Signed-in owner |
 | Cash payments | `POST /api/payments`, `GET /api/payments/{id}` | Signed-in owner |
 | Cash confirmation | `POST /api/payments/{id}/confirm-cash` | Admin |
+| Payment lookup | `GET /api/payments/admin/{id}` | Admin |
 
 Protected requests use `Authorization: Bearer <accessToken>` from login. The browser UI adds this header for you. API errors use one JSON shape; common results are `400` for invalid input, `401` for missing/invalid login, `403` for insufficient role, `404` for missing or other users' records, and `409` for business conflicts.
 
@@ -105,6 +106,6 @@ Integration tests use rollback for their test data. They check entity mappings, 
 
 ## Scope and safety
 
-This is a learning and portfolio application, not a payment gateway. CASH confirmation is a manual admin record, not proof that the system transferred money. There is no refund process or password-reset flow yet. Use only test data and test credentials locally. Keep `.env` private; `.env.example` contains placeholders and is safe to commit.
+This is a learning and portfolio application, not a payment gateway. CASH confirmation is a manual admin record, not proof that the system transferred money. The confirming admin ID and time are stored for new confirmations; older completed payments have no audit details. There is no refund process or password-reset flow yet. Use only test data and test credentials locally. Keep `.env` private; `.env.example` contains placeholders and is safe to commit.
 
 For more detail about each implementation phase, see the [docs folder](docs/).

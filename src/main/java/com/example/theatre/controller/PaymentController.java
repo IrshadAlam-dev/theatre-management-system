@@ -33,7 +33,12 @@ public class PaymentController {
     }
 
     @PostMapping("/{id}/confirm-cash")
-    public PaymentResponse confirmCash(@PathVariable Long id) {
-        return service.confirmCash(id);
+    public PaymentResponse confirmCash(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+        return service.confirmCash(id, Long.valueOf(jwt.getSubject()));
+    }
+
+    @GetMapping("/admin/{id}")
+    public PaymentResponse getForAdmin(@PathVariable Long id) {
+        return service.getForAdmin(id);
     }
 }

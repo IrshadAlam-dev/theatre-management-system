@@ -292,6 +292,9 @@ function renderBookings() {
     card.append(element('p', '', `Reference: ${booking.bookingReference}`));
     card.append(element('p', '', `Total: ${amountLabel(booking.totalAmount)} · Seats: ${booking.seats.map(seat => `${seat.rowNumber}${seat.seatNumber}`).join(', ') || 'Released'}`));
     card.append(element('p', '', `Cash payment: ${payment?.status || (booking.paymentId ? 'Loading…' : 'Not started')}${payment?.id ? ` · ID #${payment.id}` : ''}`));
+    if (payment?.confirmedByUserId && payment?.confirmedAt) {
+      card.append(element('p', '', `Cash confirmed by admin #${payment.confirmedByUserId} on ${new Date(payment.confirmedAt).toLocaleString()}`));
+    }
     const actions = element('div', 'booking-actions');
     if (booking.status === 'CONFIRMED' && !booking.paymentId && !payment) {
       const pay = element('button', 'button button-primary', 'Record cash payment');
@@ -350,15 +353,32 @@ async function confirmCash(event) {
   const form = event.currentTarget;
   const id = form.elements.namedItem('paymentId').value;
   if (!window.confirm(`Confirm cash was actually received for payment #${id}?`)) return;
-  const button = form.querySelector('button[type=submit], button');
+  const button = form.querySelector('button[type=submit]');
   formMessage(form, '');
   setBusy(button, true, 'Confirming…');
   try {
     const payment = await api(`/api/payments/${id}/confirm-cash`, { method: 'POST' });
     notice(`Cash payment #${payment.id} completed. Receipt: ${payment.transactionReference}`);
     form.reset();
-    formMessage(form, `Payment #${payment.id} completed. Receipt: ${payment.transactionReference}`);
+    formMessage(form, `Payment #${payment.id} completed by admin #${payment.confirmedByUserId} at ${new Date(payment.confirmedAt).toLocaleString()}. Receipt: ${payment.transactionReference}`);
     await loadBookings();
+  } catch (error) { formMessage(form, error.message, true); }
+  finally { setBusy(button, false); }
+}
+
+async function lookUpPayment() {
+  const form = $('#confirm-form');
+  const field = form.elements.namedItem('paymentId');
+  if (!field.reportValidity()) return;
+  const button = $('#lookup-payment');
+  formMessage(form, '');
+  setBusy(button, true, 'Looking up…');
+  try {
+    const payment = await api(`/api/payments/admin/${field.value}`);
+    const audit = payment.confirmedByUserId && payment.confirmedAt
+      ? ` Confirmed by admin #${payment.confirmedByUserId} at ${new Date(payment.confirmedAt).toLocaleString()}.`
+      : payment.status === 'COMPLETED' ? ' This payment was confirmed before audit tracking was added.' : '';
+    formMessage(form, `Payment #${payment.id}: ${payment.status}, ${payment.method}, amount ${amountLabel(payment.amount)}.${audit}`);
   } catch (error) { formMessage(form, error.message, true); }
   finally { setBusy(button, false); }
 }
@@ -393,5 +413,6 @@ $('#refresh-shows').addEventListener('click', loadCatalog);
 $('#close-seats').addEventListener('click', () => $('#seat-panel').classList.add('hidden'));
 $('#book-button').addEventListener('click', bookSeats);
 $('#confirm-form').addEventListener('submit', confirmCash);
+$('#lookup-payment').addEventListener('click', lookUpPayment);
 document.querySelectorAll('.admin-form').forEach(form => form.addEventListener('submit', addCatalogueItem));
 loadCatalog();

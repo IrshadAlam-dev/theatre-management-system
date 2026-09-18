@@ -7,6 +7,7 @@ import com.example.theatre.exception.BusinessRuleException;
 import com.example.theatre.repository.*;
 import com.example.theatre.service.BookingService;
 import com.example.theatre.service.PaymentService;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -34,6 +35,7 @@ class BookingFlowIT {
     @Autowired private MovieRepository movies;
     @Autowired private ShowRepository shows;
     @Autowired private SeatRepository seats;
+    @Autowired private EntityManager entityManager;
 
     @Test
     void cancellationMakesSeatAvailableForAnotherBooking() {
@@ -63,7 +65,14 @@ class BookingFlowIT {
                 new BookingRequest(fixture.showId(), List.of(fixture.seatId())));
         var payment = paymentService.create(fixture.userId(),
                 new PaymentRequest(booking.id(), PaymentMethod.CASH));
-        paymentService.confirmCash(payment.id());
+        var confirmed = paymentService.confirmCash(payment.id(), fixture.adminId());
+        assertThat(confirmed.confirmedByUserId()).isEqualTo(fixture.adminId());
+        assertThat(confirmed.confirmedAt()).isNotNull();
+        entityManager.flush();
+        entityManager.clear();
+        var saved = paymentService.getForAdmin(payment.id());
+        assertThat(saved.confirmedByUserId()).isEqualTo(fixture.adminId());
+        assertThat(saved.confirmedAt()).isNotNull();
 
         assertThatThrownBy(() -> bookingService.cancel(fixture.userId(), booking.id()))
                 .isInstanceOf(BusinessRuleException.class)
@@ -76,6 +85,13 @@ class BookingFlowIT {
         user.setEmail("booking-" + UUID.randomUUID() + "@example.com");
         user.setPassword("test-only-hash");
         users.save(user);
+
+        User admin = new User();
+        admin.setName("Booking test admin");
+        admin.setEmail("booking-admin-" + UUID.randomUUID() + "@example.com");
+        admin.setPassword("test-only-hash");
+        admin.setRole(Role.ADMIN);
+        users.save(admin);
 
         Theatre theatre = new Theatre();
         theatre.setName("Test theatre");
@@ -112,8 +128,8 @@ class BookingFlowIT {
         seat.setPrice(new BigDecimal("10.00"));
         seat.setScreen(screen);
         seats.save(seat);
-        return new Fixture(user.getId(), show.getId(), seat.getId());
+        return new Fixture(user.getId(), admin.getId(), show.getId(), seat.getId());
     }
 
-    private record Fixture(Long userId, Long showId, Long seatId) { }
+    private record Fixture(Long userId, Long adminId, Long showId, Long seatId) { }
 }
