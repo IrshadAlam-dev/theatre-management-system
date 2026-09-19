@@ -1,6 +1,6 @@
 # Theatre Management System
 
-A small, full-stack theatre booking project built with Java 26 and Spring Boot. Customers can browse shows, reserve seats, record a pending cash payment, and cancel an unpaid booking. Admins can add catalogue data and confirm cash after receiving it. The browser interface is served by the same Spring Boot application—there is no separate frontend server.
+A full-stack theatre booking project built with Java 26 and Spring Boot. Customers can browse shows, reserve seats, record a pending cash payment, and cancel an unpaid booking. Admins can add catalogue data and confirm cash after receiving it. The browser interface is served by the same Spring Boot application—there is no separate frontend server.
 
 ## What you need
 
