@@ -9,7 +9,7 @@ Node build step or separate frontend server.
 Start Docker/MySQL, then run from the project folder:
 
 ```bash
-cd "/Users/irshdalam/Documents/ChatGPT/Theatre Management System - Java"
+cd theatre-management-system
 docker compose up -d --wait
 set -a
 source .env

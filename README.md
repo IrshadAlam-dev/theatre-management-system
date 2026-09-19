@@ -1,6 +1,6 @@
 # Theatre Management System
 
-A full-stack theatre booking project built with Java 26 and Spring Boot. Customers can browse shows, reserve seats, record a pending cash payment, and cancel an unpaid booking. Admins can add catalogue data and confirm cash after receiving it. The browser interface is served by the same Spring Boot application there is no separate frontend server.
+A full-stack theatre booking project built with Java 26 and Spring Boot. Customers can browse shows, reserve seats, record a pending cash payment, and cancel an unpaid booking. Admins can add catalogue data and confirm cash after receiving it. The browser interface is served by the same Spring Boot application. There is no separate frontend server.
 
 ## What you need
 
@@ -12,10 +12,11 @@ No Node.js or frontend build tool is required.
 
 ## Run it locally
 
-Open a terminal in the project folder. On this machine, that folder is:
+Clone the repository, then open its project folder:
 
-```text
-/Users/irshdalam/Documents/ChatGPT/Theatre Management System - Java
+```bash
+git clone https://github.com/IrshadAlam-dev/theatre-management-system.git
+cd theatre-management-system
 ```
 
 1. Create your private configuration file:

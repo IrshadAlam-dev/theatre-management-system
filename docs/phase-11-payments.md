@@ -32,7 +32,7 @@ new confirmations; see `phase-14-cash-audit.md`.
 After code changes, restart the app from the project folder:
 
 ```bash
-cd "/Users/irshdalam/Documents/ChatGPT/Theatre Management System - Java"
+cd theatre-management-system
 set -a
 source .env
 set +a

@@ -38,7 +38,7 @@ yet. The schema already supports them for a later phase.
 After code changes, stop the current app with Ctrl+C and restart it:
 
 ```bash
-cd "/Users/irshdalam/Documents/ChatGPT/Theatre Management System - Java"
+cd theatre-management-system
 set -a
 source .env
 set +a
