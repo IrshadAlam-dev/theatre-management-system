@@ -12,6 +12,7 @@ import com.example.theatre.exception.BusinessRuleException;
 import com.example.theatre.exception.InvalidRequestException;
 import com.example.theatre.exception.ResourceNotFoundException;
 import com.example.theatre.repository.BookingRepository;
+import com.example.theatre.repository.BookingSeatRepository;
 import com.example.theatre.repository.PaymentRepository;
 import com.example.theatre.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -24,11 +25,14 @@ import java.util.UUID;
 public class PaymentService {
     private final PaymentRepository payments;
     private final BookingRepository bookings;
+    private final BookingSeatRepository bookingSeats;
     private final UserRepository users;
 
-    public PaymentService(PaymentRepository payments, BookingRepository bookings, UserRepository users) {
+    public PaymentService(PaymentRepository payments, BookingRepository bookings,
+                          BookingSeatRepository bookingSeats, UserRepository users) {
         this.payments = payments;
         this.bookings = bookings;
+        this.bookingSeats = bookingSeats;
         this.users = users;
     }
 
@@ -82,6 +86,34 @@ public class PaymentService {
         return toResponse(payment);
     }
 
+    @Transactional
+    public PaymentResponse refundCash(Long paymentId, Long adminId) {
+        // Keep the same booking-then-payment lock order used by confirmation and cancellation.
+        bookings.findByPaymentIdForConfirmation(paymentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
+        Payment payment = payments.findByIdForConfirmation(paymentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
+        if (payment.getMethod() != PaymentMethod.CASH) {
+            throw new BusinessRuleException("Only cash payments can be refunded here");
+        }
+        if (payment.getStatus() != PaymentStatus.COMPLETED) {
+            throw new BusinessRuleException("Only completed payments can be refunded");
+        }
+        User admin = users.findById(adminId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", adminId));
+        payment.setStatus(PaymentStatus.REFUNDED);
+        payment.setRefundedBy(admin);
+        payment.setRefundedAt(LocalDateTime.now());
+        Booking booking = payment.getBooking();
+        if (booking.getStatus() == BookingStatus.CONFIRMED
+                && LocalDateTime.of(booking.getShow().getShowDate(), booking.getShow().getStartTime())
+                .isAfter(LocalDateTime.now())) {
+            bookingSeats.deleteAll(bookingSeats.findByBookingId(booking.getId()));
+            booking.setStatus(BookingStatus.CANCELLED);
+        }
+        return toResponse(payment);
+    }
+
     public PaymentResponse getForAdmin(Long paymentId) {
         Payment payment = payments.findById(paymentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
@@ -101,6 +133,7 @@ public class PaymentService {
         return new PaymentResponse(payment.getId(), payment.getBooking().getId(), payment.getAmount(),
                 payment.getStatus(), payment.getMethod(), payment.getTransactionReference(),
                 payment.getCreatedAt(), payment.getConfirmedBy() == null ? null : payment.getConfirmedBy().getId(),
-                payment.getConfirmedAt());
+                payment.getConfirmedAt(), payment.getRefundedBy() == null ? null : payment.getRefundedBy().getId(),
+                payment.getRefundedAt());
     }
 }

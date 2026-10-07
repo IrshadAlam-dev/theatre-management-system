@@ -2,6 +2,7 @@ package com.example.theatre.service;
 
 import com.example.theatre.dto.BookingRequest;
 import com.example.theatre.dto.BookingResponse;
+import com.example.theatre.dto.AdminBookingResponse;
 import com.example.theatre.dto.BookingSeatResponse;
 import com.example.theatre.dto.SeatResponse;
 import com.example.theatre.entity.Booking;
@@ -108,6 +109,18 @@ public class BookingService {
 
     public Page<BookingResponse> getMine(Long userId, Pageable pageable) {
         return bookings.findByUserId(userId, pageable).map(this::toResponse);
+    }
+
+    public Page<AdminBookingResponse> searchForAdmin(String search, BookingStatus status, Pageable pageable) {
+        String query = search == null ? "" : search.trim();
+        Long bookingId = null;
+        if (!query.isEmpty() && query.chars().allMatch(Character::isDigit)) {
+            try { bookingId = Long.valueOf(query); } catch (NumberFormatException ignored) { }
+        }
+        Long exactId = bookingId;
+        return bookings.searchForAdmin(query, exactId, status, pageable)
+                .map(booking -> new AdminBookingResponse(toResponse(booking),
+                        booking.getUser().getName(), booking.getUser().getEmail()));
     }
 
     public Page<SeatResponse> availableSeats(Long showId, Pageable pageable) {

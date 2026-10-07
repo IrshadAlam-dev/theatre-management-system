@@ -52,9 +52,9 @@ Leave the terminal running while using the app. Press `Ctrl+C` to stop Spring Bo
 2. Sign out and register a customer. Open a show, choose an available seat, and reserve it.
 3. Open **My bookings** and record a CASH payment. It starts as **PENDING**—no money moves through this application.
 4. After receiving the cash (or when explicitly simulating this in a local demo), sign in as admin. Enter the payment ID, use **Look up** to check it, then confirm. Its status becomes **COMPLETED**, with the confirming admin ID and time recorded.
-5. To test cancellation, make a *different unpaid booking*. Cancel it before the show begins; its seat becomes available again. A completed cash booking cannot be cancelled without a separate refund process.
+5. To test cancellation, make a *different unpaid booking*. Cancel it before the show begins; its seat becomes available again. For a completed cash payment, an admin can record a refund after returning the money; future-show seats are released and the booking is cancelled.
 
-The browser keeps the login token in memory only. Refreshing the page signs you out.
+The show lineup can be searched by movie, genre, theatre, and date. It refreshes every 30 seconds while the browse page is open. The browser keeps the login token in memory only. Refreshing the page signs you out.
 
 ## How the code is organized
 
@@ -83,8 +83,10 @@ The usual request path is **browser → controller → service → repository �
 | Available seats | `GET /api/shows/{id}/available-seats` | Public |
 | Catalogue changes | `POST`, `PUT`, `DELETE` on catalogue routes | Admin |
 | Bookings | `POST /api/bookings`, `GET /api/bookings`, `GET /api/bookings/{id}`, `POST /api/bookings/{id}/cancel` | Signed-in owner |
+| Booking search | `GET /api/bookings/admin/search?query=...&status=...` | Admin |
 | Cash payments | `POST /api/payments`, `GET /api/payments/{id}` | Signed-in owner |
 | Cash confirmation | `POST /api/payments/{id}/confirm-cash` | Admin |
+| Cash refund | `POST /api/payments/{id}/refund-cash` | Admin |
 | Payment lookup | `GET /api/payments/admin/{id}` | Admin |
 
 Protected requests use `Authorization: Bearer <accessToken>` from login. The browser UI adds this header for you. API errors use one JSON shape; common results are `400` for invalid input, `401` for missing/invalid login, `403` for insufficient role, `404` for missing or other users' records, and `409` for business conflicts.
@@ -107,6 +109,6 @@ Integration tests use rollback for their test data. They check entity mappings, 
 
 ## Scope and safety
 
-This is a learning and portfolio application, not a payment gateway. CASH confirmation is a manual admin record, not proof that the system transferred money. The confirming admin ID and time are stored for new confirmations; older completed payments have no audit details. There is no refund process or password-reset flow yet. Use only test data and test credentials locally. Keep `.env` private; `.env.example` contains placeholders and is safe to commit.
+This is a learning and portfolio application, not a payment gateway. CASH confirmation and refund are manual admin records, not proof that cash changed hands. The confirming and refunding admin IDs and times are stored for new actions; older completed payments have no confirmation audit details. There is no password-reset flow yet. Use only test data and test credentials locally. Keep `.env` private; `.env.example` contains placeholders and is safe to commit.
 
 For more detail about each implementation phase, see the [docs folder](docs/).

@@ -2,7 +2,9 @@ package com.example.theatre.controller;
 
 import com.example.theatre.dto.BookingRequest;
 import com.example.theatre.dto.BookingResponse;
+import com.example.theatre.dto.AdminBookingResponse;
 import com.example.theatre.dto.PageResponse;
+import com.example.theatre.entity.BookingStatus;
 import com.example.theatre.service.BookingService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +36,15 @@ public class BookingController {
     public PageResponse<BookingResponse> mine(@AuthenticationPrincipal Jwt jwt,
                                                @PageableDefault(size = 10) Pageable pageable) {
         return PageResponse.from(service.getMine(Long.valueOf(jwt.getSubject()), pageable));
+    }
+
+    @GetMapping("/admin/search")
+    public PageResponse<AdminBookingResponse> searchForAdmin(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) BookingStatus status,
+            @PageableDefault(size = 20, sort = "bookingDate", direction = org.springframework.data.domain.Sort.Direction.DESC)
+            Pageable pageable) {
+        return PageResponse.from(service.searchForAdmin(query, status, pageable));
     }
 
     @GetMapping("/{id}")

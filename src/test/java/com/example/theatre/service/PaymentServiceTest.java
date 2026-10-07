@@ -31,12 +31,13 @@ import static org.mockito.Mockito.when;
 class PaymentServiceTest {
     @Mock private PaymentRepository payments;
     @Mock private BookingRepository bookings;
+    @Mock private com.example.theatre.repository.BookingSeatRepository bookingSeats;
     @Mock private UserRepository users;
     private PaymentService service;
 
     @BeforeEach
     void setUp() {
-        service = new PaymentService(payments, bookings, users);
+        service = new PaymentService(payments, bookings, bookingSeats, users);
     }
 
     @Test

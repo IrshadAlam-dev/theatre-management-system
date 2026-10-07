@@ -37,6 +37,11 @@ public class PaymentController {
         return service.confirmCash(id, Long.valueOf(jwt.getSubject()));
     }
 
+    @PostMapping("/{id}/refund-cash")
+    public PaymentResponse refundCash(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+        return service.refundCash(id, Long.valueOf(jwt.getSubject()));
+    }
+
     @GetMapping("/admin/{id}")
     public PaymentResponse getForAdmin(@PathVariable Long id) {
         return service.getForAdmin(id);

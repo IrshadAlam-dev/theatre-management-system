@@ -18,3 +18,13 @@ the application next starts. Payments completed before this migration keep
 `null` audit fields: the old confirming admin cannot be reconstructed reliably.
 This audit identifies the admin account used, but does not verify that physical
 cash changed hands or replace a financial accounting system.
+
+## Manual cash refunds
+
+An admin can record a refund with `POST /api/payments/{id}/refund-cash` after
+returning the cash. Only a completed CASH payment can be refunded, and a refund
+can be recorded once. The payment becomes `REFUNDED`; the response and customer
+booking view show the refunding admin ID and time. When the show has not started,
+the operation also cancels the booking and releases its reserved seats. The
+refund record is an audit entry only and does not move money. Flyway migration
+`V4__add_cash_refund_audit.sql` adds the refund audit columns.

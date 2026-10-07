@@ -29,6 +29,13 @@
         <div class="hero-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-ticket"><span>STAGEPASS</span><strong>ADMIT<br>ONE</strong><small>YOUR SEAT AWAITS</small></div><div class="art-star">✦</div></div>
       </div>
       <div class="section-heading" id="showtimes"><div><p class="eyebrow">THE LINEUP</p><h2>Upcoming shows</h2></div><button id="refresh-shows" class="button button-subtle">Refresh ↻</button></div>
+      <div class="show-filters" role="search" aria-label="Filter showtimes">
+        <label>Search movies<input id="show-search" type="search" placeholder="Movie title, genre, or theatre"></label>
+        <label>Theatre<select id="theatre-filter"><option value="">All theatres</option></select></label>
+        <label>Date<input id="date-filter" type="date"></label>
+        <button id="clear-show-filters" class="button button-outline" type="button">Clear filters</button>
+      </div>
+      <p id="show-count" class="show-count" aria-live="polite"></p>
       <div id="shows-list" class="show-grid"><div class="empty-state">Loading shows…</div></div>
       <section id="seat-panel" class="seat-panel hidden" aria-labelledby="seat-title">
         <div class="section-heading"><div><p class="eyebrow">PICK YOUR PLACE</p><h2 id="seat-title">Available seats</h2><p id="seat-subtitle" class="muted"></p></div><button id="close-seats" class="button button-subtle">Close ✕</button></div>
@@ -43,10 +50,23 @@
     </section>
 
     <section id="admin-view" class="view hidden">
-      <div class="page-intro"><p class="eyebrow">STAFF SPACE</p><h1>Admin desk</h1><p>Set up the catalogue and confirm cash only after you have received it.</p></div>
+      <div class="page-intro"><p class="eyebrow">STAFF SPACE</p><h1>Admin desk</h1><p>Set up the catalogue, record received cash, and record cash refunds after returning the money.</p></div>
+      <section class="panel admin-booking-search">
+        <h2>Find bookings</h2><p class="muted">Search by customer name, email, booking reference, or booking ID. Filter by booking status.</p>
+        <form id="admin-booking-search-form" class="inline-form">
+          <label>Search<input name="query" type="search" placeholder="Name, email, reference, or ID"></label>
+          <label>Status<select name="status"><option value="">All statuses</option><option value="CONFIRMED">Confirmed</option><option value="CANCELLED">Cancelled</option></select></label>
+          <button class="button button-primary" type="submit">Search bookings</button>
+        </form>
+        <div id="admin-booking-results" class="admin-booking-results" aria-live="polite"><p class="muted">Search to view bookings.</p></div>
+        <div id="admin-booking-pagination" class="booking-pagination hidden"><button id="admin-booking-prev" class="button button-outline" type="button">Previous</button><span id="admin-booking-page"></span><button id="admin-booking-next" class="button button-outline" type="button">Next</button></div>
+      </section>
       <div class="admin-layout">
         <section class="panel"><h2>Confirm cash</h2><p class="muted">Use the payment ID given to you by the customer. This action cannot be repeated.</p>
           <form id="confirm-form" class="inline-form"><label>Payment ID<input name="paymentId" type="number" min="1" required></label><button id="lookup-payment" class="button button-outline" type="button">Look up</button><button class="button button-primary" type="submit">Confirm received</button></form>
+        </section>
+        <section class="panel"><h2>Refund cash</h2><p class="muted">After returning the cash, enter the payment ID and record the refund. This action cannot be repeated.</p>
+          <form id="refund-form" class="inline-form"><label>Payment ID<input name="paymentId" type="number" min="1" required></label><button class="button button-primary" type="submit">Record refund</button></form>
         </section>
         <section class="panel"><h2>Catalogue IDs</h2><p class="muted">Use these IDs when creating related records.</p><div id="admin-ids" class="id-lists">Loading…</div></section>
       </div>
@@ -55,7 +75,7 @@
         <form class="panel admin-form" data-endpoint="theatres"><h3>1. Theatre</h3><label>Name<input name="name" required maxlength="150"></label><label>Address<input name="address" required></label><label>City<input name="city" required></label><button class="button button-primary">Add theatre</button></form>
         <form class="panel admin-form" data-endpoint="screens"><h3>2. Screen</h3><label>Name<input name="name" required></label><label>Capacity<input name="capacity" type="number" min="1" required></label><label>Theatre ID<input name="theatreId" type="number" min="1" required></label><button class="button button-primary">Add screen</button></form>
         <form class="panel admin-form" data-endpoint="movies"><h3>3. Movie</h3><label>Title<input name="title" required></label><label>Genre<input name="genre" required></label><label>Language<input name="language" required></label><label>Duration (minutes)<input name="duration" type="number" min="1" required></label><label>Release date<input name="releaseDate" type="date" required></label><button class="button button-primary">Add movie</button></form>
-        <form class="panel admin-form" data-endpoint="shows"><h3>4. Show</h3><label>Date<input name="showDate" type="date" required></label><label>Start<input name="startTime" type="time" required></label><label>End<input name="endTime" type="time" required></label><label>Movie ID<input name="movieId" type="number" min="1" required></label><label>Screen ID<input name="screenId" type="number" min="1" required></label><button class="button button-primary">Add show</button></form>
+        <form id="show-form" class="panel admin-form" data-endpoint="shows"><h3>4. Show</h3><p class="muted">Choose a movie and screen by name. Shows on the same screen cannot overlap. Add seats to the screen before customers book.</p><label>Date<input name="showDate" type="date" required></label><label>Start<input name="startTime" type="time" required></label><label>End<input name="endTime" type="time" required></label><label>Movie<select name="movieId" required><option value="">Add a movie first</option></select></label><label>Screen<select name="screenId" required><option value="">Add a screen first</option></select></label><button class="button button-primary">Add show</button></form>
         <form class="panel admin-form" data-endpoint="seats"><h3>5. Seat</h3><label>Row<input name="rowNumber" required maxlength="10"></label><label>Number<input name="seatNumber" required maxlength="10"></label><label>Type<select name="seatType"><option>STANDARD</option><option>PREMIUM</option><option>RECLINER</option></select></label><label>Price<input name="price" type="number" min="0.01" step="0.01" required></label><label>Screen ID<input name="screenId" type="number" min="1" required></label><button class="button button-primary">Add seat</button></form>
       </div>
     </section>

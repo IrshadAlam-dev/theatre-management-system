@@ -14,6 +14,8 @@ public record PaymentResponse(
         String transactionReference,
         LocalDateTime createdAt,
         Long confirmedByUserId,
-        LocalDateTime confirmedAt
+        LocalDateTime confirmedAt,
+        Long refundedByUserId,
+        LocalDateTime refundedAt
 ) {
 }

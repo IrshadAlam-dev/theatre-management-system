@@ -1,6 +1,7 @@
 // A deliberately small frontend: state lives in this tab only, not localStorage.
 const state = { token: null, user: null, movies: [], shows: [], screens: [], theatres: [],
-  selectedShow: null, availableSeats: [], selectedSeats: new Set(), bookings: [], payments: new Map() };
+  selectedShow: null, availableSeats: [], selectedSeats: new Set(), bookings: [], payments: new Map(),
+  adminBookingPage: 0, adminBookingPages: 0, adminBookingQuery: '', adminBookingStatus: '' };
 const $ = (selector) => document.querySelector(selector);
 
 function element(tag, className, label) {
@@ -68,7 +69,7 @@ function showView(name) {
   document.querySelectorAll('.view').forEach(view => view.classList.toggle('hidden', view.id !== `${name}-view`));
   document.querySelectorAll('[data-view]').forEach(button => button.classList.toggle('active', button.dataset.view === name));
   if (name === 'bookings') loadBookings();
-  if (name === 'admin') renderAdminIds();
+  if (name === 'admin') { renderAdminIds(); searchAdminBookings(0); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -146,11 +147,39 @@ async function loadCatalog() {
     state.screens = screens.content;
     state.theatres = theatres.content;
     renderShows();
+    renderTheatreFilter();
     renderAdminIds();
+    renderShowFormOptions();
   } catch (error) {
     $('#shows-list').replaceChildren(element('div', 'empty-state', 'Could not load shows. Check the server and use Refresh to try again.'));
     notice(error.message, true);
   } finally { setBusy(refresh, false); }
+}
+
+function renderTheatreFilter() {
+  const select = $('#theatre-filter');
+  const selected = select.value;
+  select.replaceChildren(new Option('All theatres', ''));
+  for (const theatre of state.theatres) select.add(new Option(theatre.name, theatre.id));
+  if ([...select.options].some(option => option.value === selected)) select.value = selected;
+}
+
+function renderShowFormOptions() {
+  const movieSelect = $('#show-form [name=movieId]');
+  const screenSelect = $('#show-form [name=screenId]');
+  const movieValue = movieSelect.value;
+  const screenValue = screenSelect.value;
+  movieSelect.replaceChildren(new Option('Choose a movie', ''));
+  for (const movie of state.movies) movieSelect.add(new Option(`${movie.title} (#${movie.id})`, movie.id));
+  screenSelect.replaceChildren(new Option('Choose a screen', ''));
+  for (const screen of state.screens) {
+    const theatre = theatreFor(screen.theatreId);
+    screenSelect.add(new Option(`${theatre?.name || `Theatre #${screen.theatreId}`} · ${screen.name} (#${screen.id})`, screen.id));
+  }
+  if ([...movieSelect.options].some(option => option.value === movieValue)) movieSelect.value = movieValue;
+  if ([...screenSelect.options].some(option => option.value === screenValue)) screenSelect.value = screenValue;
+  movieSelect.options[0].textContent = state.movies.length ? 'Choose a movie' : 'Add a movie first';
+  screenSelect.options[0].textContent = state.screens.length ? 'Choose a screen' : 'Add a screen first';
 }
 
 function renderShows() {
@@ -159,10 +188,28 @@ function renderShows() {
   const upcoming = state.shows.filter(show => new Date(`${show.showDate}T${show.startTime}`) > new Date())
     .sort((a, b) => `${a.showDate}${a.startTime}`.localeCompare(`${b.showDate}${b.startTime}`));
   if (!upcoming.length) {
+    $('#show-count').textContent = '0 upcoming shows';
     list.append(element('div', 'empty-state', 'No upcoming shows yet. An admin can add a movie, screen, show, and seats.'));
     return;
   }
-  for (const show of upcoming) {
+  const query = $('#show-search').value.trim().toLocaleLowerCase();
+  const theatreId = $('#theatre-filter').value;
+  const date = $('#date-filter').value;
+  const filtered = upcoming.filter(show => {
+    const movie = movieFor(show.movieId);
+    const screen = screenFor(show.screenId);
+    const theatre = theatreFor(screen?.theatreId);
+    const text = `${movie?.title || ''} ${movie?.genre || ''} ${theatre?.name || ''} ${screen?.name || ''}`.toLocaleLowerCase();
+    return (!query || text.includes(query))
+      && (!theatreId || String(screen?.theatreId) === theatreId)
+      && (!date || show.showDate === date);
+  });
+  $('#show-count').textContent = `${filtered.length} of ${upcoming.length} upcoming show${upcoming.length === 1 ? '' : 's'}`;
+  if (!filtered.length) {
+    list.append(element('div', 'empty-state', 'No shows match these filters. Try a different search or clear the filters.'));
+    return;
+  }
+  for (const show of filtered) {
     const movie = movieFor(show.movieId);
     const screen = screenFor(show.screenId);
     const theatre = theatreFor(screen?.theatreId);
@@ -271,6 +318,52 @@ async function loadBookings() {
   }
 }
 
+async function searchAdminBookings(page = 0) {
+  if (state.user?.role !== 'ADMIN') return;
+  const results = $('#admin-booking-results');
+  results.replaceChildren(element('p', 'muted', 'Loading bookings…'));
+  const params = new URLSearchParams({ page: String(page), size: '20', sort: 'bookingDate,desc' });
+  if (state.adminBookingQuery) params.set('query', state.adminBookingQuery);
+  if (state.adminBookingStatus) params.set('status', state.adminBookingStatus);
+  try {
+    const data = await api(`/api/bookings/admin/search?${params}`);
+    state.adminBookingPage = data.page;
+    state.adminBookingPages = data.totalPages;
+    results.replaceChildren();
+    if (!data.content.length) {
+      results.append(element('p', 'muted', 'No bookings match your search.'));
+    } else {
+      for (const item of data.content) {
+        const booking = item.booking;
+        const card = element('article', 'admin-booking-result');
+        const heading = element('div', 'admin-booking-result-heading');
+        heading.append(element('strong', '', `${item.customerName} · ${booking.bookingReference}`));
+        heading.append(element('span', `badge ${booking.status.toLowerCase()}`, booking.status));
+        card.append(heading);
+        card.append(element('p', '', `${item.customerEmail} · Booking #${booking.id}`));
+        card.append(element('p', '', `Show #${booking.showId} · ${booking.seats.length} seat${booking.seats.length === 1 ? '' : 's'} · ${amountLabel(booking.totalAmount)} · ${dateLabel(booking.bookingDate.slice(0, 10))}`));
+        if (booking.paymentId) card.append(element('p', '', `Payment #${booking.paymentId}`));
+        results.append(card);
+      }
+    }
+    const pagination = $('#admin-booking-pagination');
+    pagination.classList.toggle('hidden', data.totalPages < 2);
+    $('#admin-booking-page').textContent = `Page ${data.page + 1} of ${data.totalPages || 1} · ${data.totalElements} bookings`;
+    $('#admin-booking-prev').disabled = data.page === 0;
+    $('#admin-booking-next').disabled = data.page + 1 >= data.totalPages;
+  } catch (error) {
+    results.replaceChildren(element('p', 'form-message error', error.message));
+  }
+}
+
+function submitAdminBookingSearch(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  state.adminBookingQuery = form.elements.namedItem('query').value.trim();
+  state.adminBookingStatus = form.elements.namedItem('status').value;
+  searchAdminBookings(0);
+}
+
 function renderBookings() {
   const list = $('#bookings-list');
   list.replaceChildren();
@@ -294,6 +387,9 @@ function renderBookings() {
     card.append(element('p', '', `Cash payment: ${payment?.status || (booking.paymentId ? 'Loading…' : 'Not started')}${payment?.id ? ` · ID #${payment.id}` : ''}`));
     if (payment?.confirmedByUserId && payment?.confirmedAt) {
       card.append(element('p', '', `Cash confirmed by admin #${payment.confirmedByUserId} on ${new Date(payment.confirmedAt).toLocaleString()}`));
+    }
+    if (payment?.refundedByUserId && payment?.refundedAt) {
+      card.append(element('p', '', `Cash refunded by admin #${payment.refundedByUserId} on ${new Date(payment.refundedAt).toLocaleString()}`));
     }
     const actions = element('div', 'booking-actions');
     if (booking.status === 'CONFIRMED' && !booking.paymentId && !payment) {
@@ -378,7 +474,27 @@ async function lookUpPayment() {
     const audit = payment.confirmedByUserId && payment.confirmedAt
       ? ` Confirmed by admin #${payment.confirmedByUserId} at ${new Date(payment.confirmedAt).toLocaleString()}.`
       : payment.status === 'COMPLETED' ? ' This payment was confirmed before audit tracking was added.' : '';
-    formMessage(form, `Payment #${payment.id}: ${payment.status}, ${payment.method}, amount ${amountLabel(payment.amount)}.${audit}`);
+    const refundAudit = payment.refundedByUserId && payment.refundedAt
+      ? ` Refunded by admin #${payment.refundedByUserId} at ${new Date(payment.refundedAt).toLocaleString()}.` : '';
+    formMessage(form, `Payment #${payment.id}: ${payment.status}, ${payment.method}, amount ${amountLabel(payment.amount)}.${audit}${refundAudit}`);
+  } catch (error) { formMessage(form, error.message, true); }
+  finally { setBusy(button, false); }
+}
+
+async function refundCash(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const id = form.elements.namedItem('paymentId').value;
+  if (!window.confirm(`Confirm cash was actually returned for payment #${id}?`)) return;
+  const button = form.querySelector('button[type=submit]');
+  formMessage(form, '');
+  setBusy(button, true, 'Recording…');
+  try {
+    const payment = await api(`/api/payments/${id}/refund-cash`, { method: 'POST' });
+    notice(`Cash refund for payment #${payment.id} recorded.`);
+    form.reset();
+    formMessage(form, `Payment #${payment.id} refunded by admin #${payment.refundedByUserId} at ${new Date(payment.refundedAt).toLocaleString()}.`);
+    await loadBookings();
   } catch (error) { formMessage(form, error.message, true); }
   finally { setBusy(button, false); }
 }
@@ -410,9 +526,25 @@ $('#auth-switch').addEventListener('click', () => setAuthMode(!registering));
 $('#auth-form').addEventListener('submit', handleAuth);
 $('#explore-button').addEventListener('click', () => $('#showtimes').scrollIntoView({ behavior: 'smooth' }));
 $('#refresh-shows').addEventListener('click', loadCatalog);
+$('#show-search').addEventListener('input', renderShows);
+$('#theatre-filter').addEventListener('change', renderShows);
+$('#date-filter').addEventListener('change', renderShows);
+$('#clear-show-filters').addEventListener('click', () => {
+  $('#show-search').value = '';
+  $('#theatre-filter').value = '';
+  $('#date-filter').value = '';
+  renderShows();
+});
+$('#admin-booking-search-form').addEventListener('submit', submitAdminBookingSearch);
+$('#admin-booking-prev').addEventListener('click', () => searchAdminBookings(state.adminBookingPage - 1));
+$('#admin-booking-next').addEventListener('click', () => searchAdminBookings(state.adminBookingPage + 1));
 $('#close-seats').addEventListener('click', () => $('#seat-panel').classList.add('hidden'));
 $('#book-button').addEventListener('click', bookSeats);
 $('#confirm-form').addEventListener('submit', confirmCash);
+$('#refund-form').addEventListener('submit', refundCash);
 $('#lookup-payment').addEventListener('click', lookUpPayment);
 document.querySelectorAll('.admin-form').forEach(form => form.addEventListener('submit', addCatalogueItem));
+window.setInterval(() => {
+  if (!document.hidden && !$('#browse-view').classList.contains('hidden')) loadCatalog();
+}, 30000);
 loadCatalog();

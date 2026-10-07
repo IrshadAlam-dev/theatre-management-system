@@ -40,6 +40,13 @@ public class Payment {
     @Column(name = "confirmed_at")
     private LocalDateTime confirmedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "refunded_by_user_id")
+    private User refundedBy;
+
+    @Column(name = "refunded_at")
+    private LocalDateTime refundedAt;
+
     public Payment() {
     }
 
@@ -110,4 +117,9 @@ public class Payment {
     public void setConfirmedAt(LocalDateTime confirmedAt) {
         this.confirmedAt = confirmedAt;
     }
+
+    public User getRefundedBy() { return refundedBy; }
+    public void setRefundedBy(User refundedBy) { this.refundedBy = refundedBy; }
+    public LocalDateTime getRefundedAt() { return refundedAt; }
+    public void setRefundedAt(LocalDateTime refundedAt) { this.refundedAt = refundedAt; }
 }

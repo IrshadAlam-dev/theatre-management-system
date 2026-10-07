@@ -27,10 +27,14 @@ receiving the money.
 The UI keeps the JWT in memory only; refreshing or closing the tab signs you
 out. This avoids persisting a token in browser storage and keeps the code
 simple. It is a demo UI, not a production payment terminal. Cash confirmation
-does not transfer money, and there is no refund workflow.
+and refund actions record what an admin reports doing; they do not transfer
+money.
 
 The catalogue page currently loads up to 100 records per resource, suitable
-for this demo. The REST APIs remain available for full paginated access.
+for this demo. Customers can search by movie title, genre, theatre, or date.
+While the browse page is open, it refreshes the catalogue every 30 seconds so
+newly added shows appear without a manual reload. The REST APIs remain available
+for full paginated access.
 
 ## Usability details
 
