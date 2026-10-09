@@ -1,6 +1,6 @@
 // A deliberately small frontend: state lives in this tab only, not localStorage.
 const state = { token: null, user: null, movies: [], shows: [], screens: [], theatres: [],
-  selectedShow: null, availableSeats: [], selectedSeats: new Set(), bookings: [], payments: new Map(),
+  selectedShow: null, seatMap: [], selectedSeats: new Set(), bookings: [], payments: new Map(),
   adminBookingPage: 0, adminBookingPages: 0, adminBookingQuery: '', adminBookingStatus: '' };
 const $ = (selector) => document.querySelector(selector);
 
@@ -230,7 +230,7 @@ function renderShows() {
 
 async function loadSeats(show) {
   state.selectedShow = show;
-  state.availableSeats = [];
+  state.seatMap = [];
   state.selectedSeats.clear();
   $('#seat-title').textContent = movieFor(show.movieId)?.title || `Show #${show.id}`;
   $('#seat-subtitle').textContent = `${dateLabel(show.showDate)} at ${show.startTime.slice(0, 5)} · Show #${show.id}`;
@@ -239,8 +239,8 @@ async function loadSeats(show) {
   $('#seat-summary').textContent = 'Choose a seat after availability loads';
   $('#book-button').disabled = true;
   try {
-    const result = await api(`/api/shows/${show.id}/available-seats?size=100`);
-    state.availableSeats = result.content;
+    const result = await api(`/api/shows/${show.id}/seat-map?size=500`);
+    state.seatMap = result.content;
     renderSeats();
     $('#seat-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
@@ -252,28 +252,46 @@ async function loadSeats(show) {
 function renderSeats() {
   const list = $('#seat-list');
   list.replaceChildren();
-  if (!state.availableSeats.length) list.append(element('p', 'muted', 'No seats are available for this show.'));
-  for (const seat of state.availableSeats) {
-    const button = element('button', 'seat-choice', `${seat.rowNumber}${seat.seatNumber}`);
-    button.type = 'button';
-    button.setAttribute('aria-pressed', String(state.selectedSeats.has(seat.id)));
-    button.setAttribute('aria-label', `Seat ${seat.rowNumber}${seat.seatNumber}, price ${amountLabel(seat.price)}`);
-    if (state.selectedSeats.has(seat.id)) button.classList.add('selected');
-    button.append(element('small', '', amountLabel(seat.price)));
-    button.addEventListener('click', () => {
-      if (state.selectedSeats.has(seat.id)) state.selectedSeats.delete(seat.id);
-      else state.selectedSeats.add(seat.id);
-      button.classList.toggle('selected', state.selectedSeats.has(seat.id));
+  if (!state.seatMap.length) list.append(element('p', 'muted', 'No seats are available for this show.'));
+  const rows = new Map();
+  for (const seat of state.seatMap) {
+    const row = String(seat.rowNumber);
+    if (!rows.has(row)) rows.set(row, []);
+    rows.get(row).push(seat);
+  }
+  for (const [rowName, seats] of [...rows.entries()].sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))) {
+    const row = element('div', 'seat-row');
+    row.setAttribute('role', 'group');
+    row.setAttribute('aria-label', `Row ${rowName}`);
+    row.append(element('span', 'seat-row-label', rowName));
+    const rowSeats = element('div', 'seat-row-seats');
+    for (const seat of seats.sort((a, b) => String(a.seatNumber).localeCompare(String(b.seatNumber), undefined, { numeric: true }))) {
+      const seatName = `${seat.rowNumber}${seat.seatNumber}`;
+      const unavailable = !seat.available;
+      const button = element('button', `seat-choice seat-${seat.seatType.toLowerCase()}${unavailable ? ' unavailable' : ''}`, seatName);
+      button.type = 'button';
+      button.disabled = unavailable;
       button.setAttribute('aria-pressed', String(state.selectedSeats.has(seat.id)));
-      updateSeatSummary();
-    });
-    list.append(button);
+      button.setAttribute('aria-label', `${seat.seatType} seat ${seatName}, ${unavailable ? 'reserved' : `available, price ${amountLabel(seat.price)}`}`);
+      if (state.selectedSeats.has(seat.id)) button.classList.add('selected');
+      button.append(element('small', '', amountLabel(seat.price)));
+      if (!unavailable) button.addEventListener('click', () => {
+          if (state.selectedSeats.has(seat.id)) state.selectedSeats.delete(seat.id);
+          else state.selectedSeats.add(seat.id);
+          button.classList.toggle('selected', state.selectedSeats.has(seat.id));
+          button.setAttribute('aria-pressed', String(state.selectedSeats.has(seat.id)));
+          updateSeatSummary();
+        });
+      rowSeats.append(button);
+    }
+    row.append(rowSeats);
+    list.append(row);
   }
   updateSeatSummary();
 }
 
 function updateSeatSummary() {
-  const chosen = state.availableSeats.filter(seat => state.selectedSeats.has(seat.id));
+  const chosen = state.seatMap.filter(seat => state.selectedSeats.has(seat.id));
   const total = chosen.reduce((sum, seat) => sum + Number(seat.price), 0);
   $('#seat-summary').textContent = chosen.length ? `${chosen.length} seat${chosen.length === 1 ? '' : 's'} · Total ${amountLabel(total)}` : 'Select a seat to continue';
   $('#book-button').disabled = chosen.length === 0;
@@ -364,6 +382,65 @@ function submitAdminBookingSearch(event) {
   searchAdminBookings(0);
 }
 
+function printBookingReceipt(booking, show, movie, payment) {
+  const printWindow = window.open('', '_blank', 'popup,width=760,height=760');
+  if (!printWindow) {
+    notice('Allow pop-ups to print your receipt.', true);
+    return;
+  }
+  const doc = printWindow.document;
+  doc.open();
+  doc.write('<!doctype html><html><head><meta charset="utf-8"><title>Booking receipt</title></head><body></body></html>');
+  doc.close();
+  const style = doc.createElement('style');
+  style.textContent = `body{font:16px Arial,sans-serif;color:#252528;max-width:720px;margin:40px auto;padding:0 24px}h1{font-family:Georgia,serif;margin-bottom:4px}.muted{color:#68666a}.receipt{border-top:2px solid #252528;margin-top:24px;padding-top:18px}.row{display:flex;justify-content:space-between;gap:24px;padding:9px 0;border-bottom:1px solid #e5e2dc}.row strong{text-align:right}.foot{margin-top:28px;color:#68666a;font-size:13px}@media print{body{margin:0 auto;padding:0 12px}}`;
+  doc.head.append(style);
+  const body = doc.body;
+  const addText = (tag, className, text) => {
+    const node = doc.createElement(tag);
+    if (className) node.className = className;
+    node.textContent = text;
+    body.append(node);
+    return node;
+  };
+  addText('p', 'muted', 'STAGEPASS · BOOKING RECEIPT');
+  addText('h1', '', movie?.title || `Booking #${booking.id}`);
+  addText('p', 'muted', booking.bookingReference);
+  const receipt = doc.createElement('section');
+  receipt.className = 'receipt';
+  body.append(receipt);
+  const row = (label, value) => {
+    const line = doc.createElement('div');
+    line.className = 'row';
+    const left = doc.createElement('span');
+    left.textContent = label;
+    const right = doc.createElement('strong');
+    right.textContent = value;
+    line.append(left, right);
+    receipt.append(line);
+  };
+  const screen = screenFor(show?.screenId);
+  const theatre = theatreFor(screen?.theatreId);
+  row('Booking ID', `#${booking.id}`);
+  row('Booking date', new Date(booking.bookingDate).toLocaleString());
+  row('Showtime', show ? `${dateLabel(show.showDate)} · ${show.startTime.slice(0, 5)}` : `Show #${booking.showId}`);
+  row('Location', `${theatre?.name || 'Theatre'}${screen ? ` · ${screen.name}` : ''}`);
+  row('Seats', booking.seats.map(seat => `${seat.rowNumber}${seat.seatNumber}`).join(', ') || 'Released');
+  row('Booking status', booking.status);
+  row('Total', amountLabel(booking.totalAmount));
+  row('Payment status', payment?.status || (booking.paymentId ? 'Unavailable' : 'Not started'));
+  if (payment?.transactionReference) row('Receipt reference', payment.transactionReference);
+  if (payment?.confirmedByUserId && payment?.confirmedAt) {
+    row('Cash confirmed', `Admin #${payment.confirmedByUserId} · ${new Date(payment.confirmedAt).toLocaleString()}`);
+  }
+  if (payment?.refundedByUserId && payment?.refundedAt) {
+    row('Cash refunded', `Admin #${payment.refundedByUserId} · ${new Date(payment.refundedAt).toLocaleString()}`);
+  }
+  addText('p', 'foot', 'This receipt reflects the booking and manual payment records in StagePass.');
+  printWindow.focus();
+  printWindow.print();
+}
+
 function renderBookings() {
   const list = $('#bookings-list');
   list.replaceChildren();
@@ -402,6 +479,9 @@ function renderBookings() {
       cancel.addEventListener('click', () => cancelBooking(booking, cancel));
       actions.append(cancel);
     }
+    const receipt = element('button', 'button button-outline', 'Print receipt');
+    receipt.addEventListener('click', () => printBookingReceipt(booking, show, movie, payment));
+    actions.append(receipt);
     card.append(actions);
     list.append(card);
   }

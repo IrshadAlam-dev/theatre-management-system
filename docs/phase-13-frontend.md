@@ -40,6 +40,10 @@ for full paginated access.
 
 The browser shows loading states while fetching shows, seats, and bookings;
 form errors appear next to the relevant form. Seat buttons retain keyboard
-focus when selected, and the selected-seat summary announces changes. Expired
-sessions sign out and ask the user to log in again. The layout adapts to small
-screens and respects reduced-motion preferences.
+focus when selected, and the selected-seat summary announces changes. The seat
+picker groups available seats by row, distinguishes seat types with a legend,
+shows reserved seats as disabled, and labels choices with their type and price.
+The seat map is loaded from `GET /api/shows/{id}/seat-map`; booking still checks
+availability transactionally when seats are reserved. Expired sessions sign
+out and ask the user to log in again. The layout adapts to small screens and
+respects reduced-motion preferences.

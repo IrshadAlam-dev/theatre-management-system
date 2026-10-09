@@ -54,7 +54,7 @@ Leave the terminal running while using the app. Press `Ctrl+C` to stop Spring Bo
 4. After receiving the cash (or when explicitly simulating this in a local demo), sign in as admin. Enter the payment ID, use **Look up** to check it, then confirm. Its status becomes **COMPLETED**, with the confirming admin ID and time recorded.
 5. To test cancellation, make a *different unpaid booking*. Cancel it before the show begins; its seat becomes available again. For a completed cash payment, an admin can record a refund after returning the money; future-show seats are released and the booking is cancelled.
 
-The show lineup can be searched by movie, genre, theatre, and date. It refreshes every 30 seconds while the browse page is open. The browser keeps the login token in memory only. Refreshing the page signs you out.
+The show lineup can be searched by movie, genre, theatre, and date. It refreshes every 30 seconds while the browse page is open. **My bookings** includes a print-friendly receipt for each booking. The browser keeps the login token in memory only. Refreshing the page signs you out.
 
 ## How the code is organized
 
@@ -81,6 +81,7 @@ The usual request path is **browser → controller → service → repository �
 | Accounts | `POST /api/auth/register`, `POST /api/auth/login` | Public |
 | Catalogue | `GET /api/movies`, `/api/theatres`, `/api/screens`, `/api/shows`, `/api/seats` | Public |
 | Available seats | `GET /api/shows/{id}/available-seats` | Public |
+| Seat map | `GET /api/shows/{id}/seat-map` | Public |
 | Catalogue changes | `POST`, `PUT`, `DELETE` on catalogue routes | Admin |
 | Bookings | `POST /api/bookings`, `GET /api/bookings`, `GET /api/bookings/{id}`, `POST /api/bookings/{id}/cancel` | Signed-in owner |
 | Booking search | `GET /api/bookings/admin/search?query=...&status=...` | Admin |

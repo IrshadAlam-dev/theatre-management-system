@@ -39,7 +39,9 @@
       <div id="shows-list" class="show-grid"><div class="empty-state">Loading shows…</div></div>
       <section id="seat-panel" class="seat-panel hidden" aria-labelledby="seat-title">
         <div class="section-heading"><div><p class="eyebrow">PICK YOUR PLACE</p><h2 id="seat-title">Available seats</h2><p id="seat-subtitle" class="muted"></p></div><button id="close-seats" class="button button-subtle">Close ✕</button></div>
-        <div class="screen-line">SCREEN</div><div id="seat-list" class="seat-grid"></div>
+        <div class="screen-line">SCREEN</div>
+        <div class="seat-legend" aria-label="Seat types and availability"><span><i class="legend-standard"></i>Standard</span><span><i class="legend-premium"></i>Premium</span><span><i class="legend-recliner"></i>Recliner</span><span><i class="legend-selected"></i>Selected</span><span><i class="legend-unavailable"></i>Reserved</span></div>
+        <div id="seat-list" class="seat-grid"></div>
         <div class="seat-footer"><p id="seat-summary" aria-live="polite">Select a seat to continue</p><button id="book-button" class="button button-primary" disabled>Reserve seats</button></div>
       </section>
     </section>

@@ -5,6 +5,7 @@ import com.example.theatre.dto.BookingResponse;
 import com.example.theatre.dto.AdminBookingResponse;
 import com.example.theatre.dto.BookingSeatResponse;
 import com.example.theatre.dto.SeatResponse;
+import com.example.theatre.dto.SeatAvailabilityResponse;
 import com.example.theatre.entity.Booking;
 import com.example.theatre.entity.BookingSeat;
 import com.example.theatre.entity.BookingStatus;
@@ -32,6 +33,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 @Service
@@ -128,6 +131,18 @@ public class BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Show", showId));
         return seats.findAvailableForShow(show.getScreen().getId(), showId, pageable)
                 .map(SeatMapper::toResponse);
+    }
+
+    public Page<SeatAvailabilityResponse> seatMap(Long showId, Pageable pageable) {
+        Show show = shows.findById(showId)
+                .orElseThrow(() -> new ResourceNotFoundException("Show", showId));
+        Set<Long> reservedSeatIds = bookingSeats.findByShowId(showId).stream()
+                .map(reservation -> reservation.getSeat().getId())
+                .collect(Collectors.toSet());
+        return seats.findByScreenId(show.getScreen().getId(), pageable).map(seat ->
+                new SeatAvailabilityResponse(seat.getId(), seat.getSeatNumber(), seat.getRowNumber(),
+                        seat.getSeatType(), seat.getPrice(), seat.getScreen().getId(),
+                        !reservedSeatIds.contains(seat.getId())));
     }
 
     @Transactional

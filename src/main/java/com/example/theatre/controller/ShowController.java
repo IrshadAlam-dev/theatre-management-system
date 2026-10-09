@@ -6,6 +6,7 @@ import com.example.theatre.dto.PageResponse;
 import com.example.theatre.service.ShowService;
 import com.example.theatre.service.BookingService;
 import com.example.theatre.dto.SeatResponse;
+import com.example.theatre.dto.SeatAvailabilityResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -46,6 +47,12 @@ public class ShowController {
     public PageResponse<SeatResponse> availableSeats(@PathVariable Long id,
                                                       @PageableDefault(size = 10) Pageable pageable) {
         return PageResponse.from(bookingService.availableSeats(id, pageable));
+    }
+
+    @GetMapping("/{id}/seat-map")
+    public PageResponse<SeatAvailabilityResponse> seatMap(@PathVariable Long id,
+            @PageableDefault(size = 200) Pageable pageable) {
+        return PageResponse.from(bookingService.seatMap(id, pageable));
     }
 
     @PutMapping("/{id}")
