@@ -69,7 +69,7 @@ function showView(name) {
   document.querySelectorAll('.view').forEach(view => view.classList.toggle('hidden', view.id !== `${name}-view`));
   document.querySelectorAll('[data-view]').forEach(button => button.classList.toggle('active', button.dataset.view === name));
   if (name === 'bookings') loadBookings();
-  if (name === 'admin') { renderAdminIds(); searchAdminBookings(0); }
+  if (name === 'admin') { renderAdminIds(); loadAdminDashboard(); searchAdminBookings(0); loadAdminActivity(); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -374,6 +374,46 @@ async function searchAdminBookings(page = 0) {
   }
 }
 
+async function loadAdminActivity() {
+  if (state.user?.role !== 'ADMIN') return;
+  const list = $('#admin-activity-list');
+  list.replaceChildren(element('p', 'muted', 'Loading activity…'));
+  try {
+    const result = await api('/api/admin/activity?size=30&sort=occurredAt,desc');
+    list.replaceChildren();
+    if (!result.content.length) {
+      list.append(element('p', 'muted', 'No admin activity recorded yet.'));
+      return;
+    }
+    for (const item of result.content) {
+      const row = element('article', 'admin-activity-item');
+      const description = element('div');
+      const target = `${item.resource}${item.resourceId ? ` #${item.resourceId}` : ''}`;
+      description.append(element('strong', '', `${item.action.replaceAll('_', ' ')} · ${target}`));
+      description.append(element('p', '', `${item.adminName} · Admin #${item.adminUserId}`));
+      row.append(description, element('time', '', new Date(item.occurredAt).toLocaleString()));
+      list.append(row);
+    }
+  } catch (error) {
+    list.replaceChildren(element('p', 'form-message error', error.message));
+  }
+}
+
+async function loadAdminDashboard() {
+  if (state.user?.role !== 'ADMIN') return;
+  try {
+    const summary = await api('/api/admin/dashboard');
+    $('#stat-total-bookings').textContent = summary.totalBookings;
+    $('#stat-confirmed-bookings').textContent = summary.confirmedBookings;
+    $('#stat-cancelled-bookings').textContent = summary.cancelledBookings;
+    $('#stat-pending-cash').textContent = summary.pendingCashPayments;
+    $('#stat-upcoming-shows').textContent = summary.upcomingShows;
+    $('#dashboard-updated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+  } catch (error) {
+    $('#dashboard-updated').textContent = `Dashboard unavailable: ${error.message}`;
+  }
+}
+
 function submitAdminBookingSearch(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -499,7 +539,7 @@ async function createPayment(booking, button) {
 }
 
 async function cancelBooking(booking, button) {
-  if (!window.confirm(`Cancel booking #${booking.id} and release its seats?`)) return;
+  if (!window.confirm(`Cancel booking #${booking.id} and release its seats? This is only available before the show's cancellation cutoff.`)) return;
   setBusy(button, true, 'Cancelling…');
   try {
     await api(`/api/bookings/${booking.id}/cancel`, { method: 'POST' });
@@ -538,6 +578,8 @@ async function confirmCash(event) {
     form.reset();
     formMessage(form, `Payment #${payment.id} completed by admin #${payment.confirmedByUserId} at ${new Date(payment.confirmedAt).toLocaleString()}. Receipt: ${payment.transactionReference}`);
     await loadBookings();
+    await loadAdminActivity();
+    await loadAdminDashboard();
   } catch (error) { formMessage(form, error.message, true); }
   finally { setBusy(button, false); }
 }
@@ -575,6 +617,8 @@ async function refundCash(event) {
     form.reset();
     formMessage(form, `Payment #${payment.id} refunded by admin #${payment.refundedByUserId} at ${new Date(payment.refundedAt).toLocaleString()}.`);
     await loadBookings();
+    await loadAdminActivity();
+    await loadAdminDashboard();
   } catch (error) { formMessage(form, error.message, true); }
   finally { setBusy(button, false); }
 }
@@ -595,6 +639,8 @@ async function addCatalogueItem(event) {
     form.reset();
     formMessage(form, `Created #${result.id}.`);
     await loadCatalog();
+    await loadAdminActivity();
+    await loadAdminDashboard();
   } catch (error) { formMessage(form, error.message, true); }
   finally { setBusy(button, false); }
 }
@@ -616,6 +662,7 @@ $('#clear-show-filters').addEventListener('click', () => {
   renderShows();
 });
 $('#admin-booking-search-form').addEventListener('submit', submitAdminBookingSearch);
+$('#refresh-admin-activity').addEventListener('click', loadAdminActivity);
 $('#admin-booking-prev').addEventListener('click', () => searchAdminBookings(state.adminBookingPage - 1));
 $('#admin-booking-next').addEventListener('click', () => searchAdminBookings(state.adminBookingPage + 1));
 $('#close-seats').addEventListener('click', () => $('#seat-panel').classList.add('hidden'));

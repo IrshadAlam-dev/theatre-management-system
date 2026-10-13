@@ -14,6 +14,9 @@ import org.springframework.data.jpa.repository.Lock;
 
 public interface ShowRepository extends JpaRepository<Show, Long> {
 
+    @Query("select count(s) from Show s where s.showDate > :date or (s.showDate = :date and s.startTime > :time)")
+    long countUpcoming(@Param("date") LocalDate date, @Param("time") LocalTime time);
+
     // Lock one show while reserving seats so two requests cannot claim the same seat.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Show s where s.id = :id")

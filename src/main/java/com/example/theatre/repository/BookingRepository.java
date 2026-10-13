@@ -24,6 +24,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     Optional<Booking> findByBookingReference(String bookingReference);
 
     Page<Booking> findByUserId(Long userId, Pageable pageable);
+    long countByStatus(BookingStatus status);
 
     @Query("""
             select b from Booking b

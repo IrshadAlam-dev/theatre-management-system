@@ -26,6 +26,7 @@ import com.example.theatre.repository.PaymentRepository;
 import com.example.theatre.mapper.SeatMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +41,9 @@ import java.util.UUID;
 @Service
 @Transactional(readOnly = true)
 public class BookingService {
+    @Value("${app.booking.cancellation-cutoff-minutes:0}")
+    private long cancellationCutoffMinutes;
+
     private final BookingRepository bookings;
     private final BookingSeatRepository bookingSeats;
     private final ShowRepository shows;
@@ -155,9 +159,11 @@ public class BookingService {
         if (booking.getStatus() == BookingStatus.CANCELLED) {
             throw new BusinessRuleException("Booking is already cancelled");
         }
-        if (!LocalDateTime.of(booking.getShow().getShowDate(), booking.getShow().getStartTime())
-                .isAfter(LocalDateTime.now())) {
-            throw new BusinessRuleException("Cannot cancel a show that has already started");
+        LocalDateTime cancellationCutoff = LocalDateTime
+                .of(booking.getShow().getShowDate(), booking.getShow().getStartTime())
+                .minusMinutes(Math.max(0, cancellationCutoffMinutes));
+        if (!LocalDateTime.now().isBefore(cancellationCutoff)) {
+            throw new BusinessRuleException("The cancellation cutoff for this show has passed");
         }
         Payment payment = payments.findByBookingId(bookingId).orElse(null);
         if (payment != null && payment.getStatus() != PaymentStatus.PENDING

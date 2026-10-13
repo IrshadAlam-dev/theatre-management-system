@@ -17,12 +17,16 @@ import com.example.theatre.repository.PaymentRepository;
 import com.example.theatre.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
 public class PaymentService {
+    @Value("${app.booking.refund-cutoff-minutes:0}")
+    private long refundCutoffMinutes;
+
     private final PaymentRepository payments;
     private final BookingRepository bookings;
     private final BookingSeatRepository bookingSeats;
@@ -99,15 +103,20 @@ public class PaymentService {
         if (payment.getStatus() != PaymentStatus.COMPLETED) {
             throw new BusinessRuleException("Only completed payments can be refunded");
         }
+        Booking booking = payment.getBooking();
+        LocalDateTime refundCutoff = LocalDateTime
+                .of(booking.getShow().getShowDate(), booking.getShow().getStartTime())
+                .minusMinutes(Math.max(0, refundCutoffMinutes));
+        LocalDateTime now = LocalDateTime.now();
+        if (!now.isBefore(refundCutoff)) {
+            throw new BusinessRuleException("The refund cutoff for this show has passed");
+        }
         User admin = users.findById(adminId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", adminId));
         payment.setStatus(PaymentStatus.REFUNDED);
         payment.setRefundedBy(admin);
         payment.setRefundedAt(LocalDateTime.now());
-        Booking booking = payment.getBooking();
-        if (booking.getStatus() == BookingStatus.CONFIRMED
-                && LocalDateTime.of(booking.getShow().getShowDate(), booking.getShow().getStartTime())
-                .isAfter(LocalDateTime.now())) {
+        if (booking.getStatus() == BookingStatus.CONFIRMED) {
             bookingSeats.deleteAll(bookingSeats.findByBookingId(booking.getId()));
             booking.setStatus(BookingStatus.CANCELLED);
         }

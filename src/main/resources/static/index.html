@@ -53,6 +53,14 @@
 
     <section id="admin-view" class="view hidden">
       <div class="page-intro"><p class="eyebrow">STAFF SPACE</p><h1>Admin desk</h1><p>Set up the catalogue, record received cash, and record cash refunds after returning the money.</p></div>
+      <section class="admin-dashboard" aria-label="Theatre overview">
+        <article class="admin-stat"><span>Total bookings</span><strong id="stat-total-bookings">—</strong></article>
+        <article class="admin-stat"><span>Confirmed</span><strong id="stat-confirmed-bookings">—</strong></article>
+        <article class="admin-stat"><span>Cancelled</span><strong id="stat-cancelled-bookings">—</strong></article>
+        <article class="admin-stat"><span>Pending cash</span><strong id="stat-pending-cash">—</strong></article>
+        <article class="admin-stat"><span>Upcoming shows</span><strong id="stat-upcoming-shows">—</strong></article>
+      </section>
+      <p id="dashboard-updated" class="dashboard-updated" aria-live="polite"></p>
       <section class="panel admin-booking-search">
         <h2>Find bookings</h2><p class="muted">Search by customer name, email, booking reference, or booking ID. Filter by booking status.</p>
         <form id="admin-booking-search-form" class="inline-form">
@@ -63,11 +71,15 @@
         <div id="admin-booking-results" class="admin-booking-results" aria-live="polite"><p class="muted">Search to view bookings.</p></div>
         <div id="admin-booking-pagination" class="booking-pagination hidden"><button id="admin-booking-prev" class="button button-outline" type="button">Previous</button><span id="admin-booking-page"></span><button id="admin-booking-next" class="button button-outline" type="button">Next</button></div>
       </section>
+      <section class="panel admin-activity-panel">
+        <div class="activity-heading"><div><h2>Recent admin activity</h2><p class="muted">Successful catalogue and cash payment actions.</p></div><button id="refresh-admin-activity" class="button button-subtle" type="button">Refresh ↻</button></div>
+        <div id="admin-activity-list" class="admin-activity-list" aria-live="polite"><p class="muted">Loading activity…</p></div>
+      </section>
       <div class="admin-layout">
         <section class="panel"><h2>Confirm cash</h2><p class="muted">Use the payment ID given to you by the customer. This action cannot be repeated.</p>
           <form id="confirm-form" class="inline-form"><label>Payment ID<input name="paymentId" type="number" min="1" required></label><button id="lookup-payment" class="button button-outline" type="button">Look up</button><button class="button button-primary" type="submit">Confirm received</button></form>
         </section>
-        <section class="panel"><h2>Refund cash</h2><p class="muted">After returning the cash, enter the payment ID and record the refund. This action cannot be repeated.</p>
+        <section class="panel"><h2>Refund cash</h2><p class="muted">After returning the cash and before the show's refund cutoff, enter the payment ID and record the refund. This action cannot be repeated.</p>
           <form id="refund-form" class="inline-form"><label>Payment ID<input name="paymentId" type="number" min="1" required></label><button class="button button-primary" type="submit">Record refund</button></form>
         </section>
         <section class="panel"><h2>Catalogue IDs</h2><p class="muted">Use these IDs when creating related records.</p><div id="admin-ids" class="id-lists">Loading…</div></section>

@@ -25,7 +25,7 @@ cd theatre-management-system
    cp .env.example .env
    ```
 
-2. Open `.env` and replace the example passwords. Set `DB_PASSWORD` to the same value as `MYSQL_PASSWORD`. Generate a JWT signing key with `openssl rand -base64 32` and put its output in `JWT_SECRET_BASE64`. To create an admin on first startup, uncomment `ADMIN_EMAIL` and `ADMIN_PASSWORD` and use your own values; the admin password must be 12–72 UTF-8 bytes. Do not share or commit `.env`.
+2. Open `.env` and replace the example passwords. Set `DB_PASSWORD` to the same value as `MYSQL_PASSWORD`. Generate a JWT signing key with `openssl rand -base64 32` and put its output in `JWT_SECRET_BASE64`. To create an admin on first startup, uncomment `ADMIN_EMAIL` and `ADMIN_PASSWORD` and use your own values; the admin password must be 12–72 UTF-8 bytes. Adjust `BOOKING_CANCELLATION_CUTOFF_MINUTES` and `BOOKING_REFUND_CUTOFF_MINUTES` if you want to close those actions before showtime. Do not share or commit `.env`.
 
 3. Start MySQL:
 
@@ -85,6 +85,8 @@ The usual request path is **browser → controller → service → repository �
 | Catalogue changes | `POST`, `PUT`, `DELETE` on catalogue routes | Admin |
 | Bookings | `POST /api/bookings`, `GET /api/bookings`, `GET /api/bookings/{id}`, `POST /api/bookings/{id}/cancel` | Signed-in owner |
 | Booking search | `GET /api/bookings/admin/search?query=...&status=...` | Admin |
+| Admin activity | `GET /api/admin/activity` | Admin |
+| Admin dashboard | `GET /api/admin/dashboard` | Admin |
 | Cash payments | `POST /api/payments`, `GET /api/payments/{id}` | Signed-in owner |
 | Cash confirmation | `POST /api/payments/{id}/confirm-cash` | Admin |
 | Cash refund | `POST /api/payments/{id}/refund-cash` | Admin |

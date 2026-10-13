@@ -23,7 +23,8 @@ cash changed hands or replace a financial accounting system.
 
 An admin can record a refund with `POST /api/payments/{id}/refund-cash` after
 returning the cash. Only a completed CASH payment can be refunded, and a refund
-can be recorded once. The payment becomes `REFUNDED`; the response and customer
+can be recorded once. `BOOKING_REFUND_CUTOFF_MINUTES` controls how long before
+showtime refunds close; its default is `0`, meaning until showtime. The payment becomes `REFUNDED`; the response and customer
 booking view show the refunding admin ID and time. When the show has not started,
 the operation also cancels the booking and releases its reserved seats. The
 refund record is an audit entry only and does not move money. Flyway migration

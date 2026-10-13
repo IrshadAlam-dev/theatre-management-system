@@ -16,7 +16,8 @@ curl -s 'http://localhost:8080/api/shows/9/available-seats' | jq
 
 `POST /api/bookings/{bookingId}/cancel` requires the booking owner's bearer
 token. It is allowed only before the show starts and while any cash payment is
-not completed. The booking remains in history with status `CANCELLED`, but its
+not completed. The `BOOKING_CANCELLATION_CUTOFF_MINUTES` setting can close
+cancellation earlier; its default is `0`, meaning until showtime. The booking remains in history with status `CANCELLED`, but its
 active reservation rows are deleted so the seats can be booked again. A pending
 cash payment changes to `CANCELLED`. A completed or refunded payment requires
 a separate refund process and cannot be cancelled through this endpoint.
